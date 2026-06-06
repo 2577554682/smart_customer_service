@@ -1,0 +1,11 @@
+langchain-core
+langchain-openai
+langchain-huggingface
+langchain-unstructured
+langchain-chroma
+langchain-text-splitters
+langgraph
+python-dotenv
+sentence-transformers
+torch
+unstructured
