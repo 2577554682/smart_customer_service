@@ -10,16 +10,13 @@ smart_customer_service/
 ├── graph.py             # LangGraph 状态图构建 + 条件路由
 ├── nodes.py             # 7 个节点函数（意图分析→检索→生成→质检→改进→最终化→历史保存）
 ├── state.py             # State 类型定义
-├── rag.py               # RAG 系统：文档加载、向量化、重排序（懒加载）
+├── rag.py               # RAG 系统：文档加载、向量化、重排序
 ├── my_llm.py            # LLM 实例（ChatOpenAI 兼容接口）
 ├── env_utils.py         # 环境变量加载
-├── .env.example         # 环境变量模板（可提交）
-├── .env                 # 实际环境变量（已在 .gitignore 中排除）
-├── .gitignore
+├── .env.example         # 环境变量模板
 ├── requirements.txt     # Python 依赖
-├── documents/
-│   └── product_guide.txt  # RAG 知识库文档
-└── chroma_db/           # Chroma 向量数据库持久化目录（已在 .gitignore 中排除）
+└── documents/
+    └── product_guide.txt  # RAG 知识库文档
 ```
 
 ## 核心架构
@@ -90,10 +87,10 @@ class State(TypedDict):
 
 | 组件 | 技术选型 | 说明 |
 |---|---|---|
-| LLM | `openai/gpt-oss-20b` (NVIDIA NIM) | 通过 `langchain_openai.ChatOpenAI` 兼容接口调用 |
+| LLM | `openai/gpt-oss-20b` (NVIDIA NIM) | 通过 `langchain_openai.ChatOpenAI` 兼容接口调用，可替换为任意 OpenAI 兼容 API |
 | Embedding | `bge-large-zh-v1.5` (BAAI) | HuggingFace 本地加载，自动检测 CUDA/CPU |
 | Reranker | `bge-reranker-large` (BAAI) | CrossEncoder 重排序，加载失败自动降级 |
-| 向量数据库 | Chroma | 本地持久化到 `./chroma_db/` |
+| 向量数据库 | Chroma | 本地持久化 |
 | 文档加载 | UnstructuredLoader | `langchain_unstructured` |
 | 文本切分 | RecursiveCharacterTextSplitter | chunk_size=300, overlap=50, 按段落/句号切分 |
 | 编排引擎 | LangGraph | StateGraph 状态机驱动 |
@@ -104,7 +101,6 @@ class State(TypedDict):
 
 - Python 3.10+
 - CUDA GPU（可选，CPU 也可运行）
-- NVIDIA NIM API Key（[获取地址](https://build.nvidia.com/)）
 
 ### 2. 安装依赖
 
@@ -115,18 +111,21 @@ pip install -r requirements.txt
 ### 3. 配置环境变量
 
 ```bash
-# 复制模板文件
 cp .env.example .env
+```
 
-# 编辑 .env 填入实际值
-# API_KEY：你的 NVIDIA NIM API Key
-# EMBED_MODEL_PATH：本地 bge-large-zh-v1.5 模型路径
-# RERANKER_MODEL_PATH：本地 bge-reranker-large 模型路径（可选）
+编辑 `.env` 填入实际值：
+
+```env
+API_KEY=your_api_key
+BASE_URL=https://integrate.api.nvidia.com/v1
+EMBED_MODEL_PATH=/path/to/bge-large-zh-v1.5
+RERANKER_MODEL_PATH=/path/to/bge-reranker-large
 ```
 
 ### 4. 准备知识库
 
-编辑 `documents/product_guide.txt`，写入你的产品帮助文档、FAQ、政策等内容。首次运行时系统会自动完成文档切分和向量化。
+编辑 `documents/product_guide.txt`，写入产品帮助文档、FAQ、政策等内容。首次运行时系统会自动完成文档切分和向量化。
 
 ### 5. 运行测试
 
@@ -134,9 +133,9 @@ cp .env.example .env
 python main.py
 ```
 
-系统会用 6 条测试查询（涵盖正常咨询、投诉、闲聊、空输入、超长输入边界情况）依次跑一遍完整流程。
+系统会依次测试正常咨询、投诉、闲聊以及空输入、超长输入等边界情况。
 
-### 6. API 集成示例
+### 6. API 集成
 
 ```python
 from graph import build_graph
@@ -189,6 +188,7 @@ gpt = ChatOpenAI(
 ### 调整检索参数
 
 在 `rag.py` 中修改：
+
 - `chunk_size`：文档切分大小（默认 300）
 - `chunk_overlap`：重叠窗口（默认 50）
 - `search_kwargs={"k": 5}`：初检召回数量
@@ -204,13 +204,6 @@ my_llm ──────────────┘
 ```
 
 单向依赖，无循环引用。每个模块可独立测试。
-
-## 安全提示
-
-- `.env` 文件包含 API Key，**已加入 `.gitignore`，请勿提交到版本库**
-- 如需分享项目，使用 `.env.example` 作为模板
-- 如果 API Key 曾出现在 Git 历史或日志中，请在 NVIDIA 后台轮换密钥
-- `chroma_db/` 目录已加入 `.gitignore`，避免提交向量库二进制文件
 
 ## License
 
